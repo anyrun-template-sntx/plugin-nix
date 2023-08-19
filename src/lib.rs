@@ -1,8 +1,12 @@
-use abi_stable::{rvec, std_types::{ROption, RString, RVec}};
-use anyrun_plugin::{anyrun_interface::HandleResult, *};
+use abi_stable::{
+    rvec,
+    std_types::{ROption, RString, RVec},
+};
+use anyrun_interface::{HandleResult, Match, PluginInfo};
+use anyrun_macros::{get_matches, handler, info, init};
 use fuzzy_matcher::FuzzyMatcher;
-use serde::{Serialize, Deserialize};
 use regex::{Captures, Regex};
+use serde::{Deserialize, Serialize};
 use std::{fs, process::Command};
 
 #[derive(Deserialize)]
@@ -80,21 +84,33 @@ pub fn init(config_dir: RString) -> State {
 
     let entries: RVec<NixEntry> = match fs::read_to_string(format!("{}/nix-pkgs.ron", config_dir)) {
         Ok(content) => ron::from_str(&content).unwrap_or_else(|why| {
-            eprintln!("Error parsing applications plugin cache: {}\nBuilding new cache...", why);
+            eprintln!(
+                "Error parsing applications plugin cache: {}\nBuilding new cache...",
+                why
+            );
             let entries = get_entries();
             fs::write(
-                format!("{}/nix-pkgs.ron", config_dir), ron::to_string(&entries)
-                    .expect("Nix plugin could not parse entries to RON format!").as_bytes()
-            ).expect("Updater could not write cache file!");
+                format!("{}/nix-pkgs.ron", config_dir),
+                ron::to_string(&entries)
+                    .expect("Nix plugin could not parse entries to RON format!")
+                    .as_bytes(),
+            )
+            .expect("Updater could not write cache file!");
             entries
         }),
         Err(why) => {
-            eprintln!("Error reading applications plugin cache: {}\nBuilding new cache...", why);
+            eprintln!(
+                "Error reading applications plugin cache: {}\nBuilding new cache...",
+                why
+            );
             let entries = get_entries();
             fs::write(
-                format!("{}/nix-pkgs.ron", config_dir), ron::to_string(&entries)
-                    .expect("Nix plugin could not parse entries to RON format!").as_bytes()
-            ).expect("Updater could not write cache file!");
+                format!("{}/nix-pkgs.ron", config_dir),
+                ron::to_string(&entries)
+                    .expect("Nix plugin could not parse entries to RON format!")
+                    .as_bytes(),
+            )
+            .expect("Updater could not write cache file!");
             entries
         }
     };
@@ -105,7 +121,8 @@ pub fn init(config_dir: RString) -> State {
 fn get_entries() -> RVec<NixEntry> {
     let output = Command::new("nix-env")
         .args(["-qaP", "--description"])
-        .output().unwrap();
+        .output()
+        .unwrap();
 
     let output_str = String::from_utf8(output.stdout).unwrap();
     let re = Regex::new(r"^[^\.]*.(\S*)\s*\S*\s*(.*)$").unwrap();
@@ -128,7 +145,7 @@ fn get_entries() -> RVec<NixEntry> {
                     .get(2)
                     .expect("Nix failed to read a package description!")
                     .as_str(),
-            )
+            ),
         });
     }
     entries
